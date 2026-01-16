@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OmniHealth AI - Medical Dynamic UI</title>
+
+  <style>
+    :root{
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.60);
+      --glass: rgba(8, 12, 18, 0.42);
+      --glass-border: rgba(255,255,255,0.18);
+      --accent: rgba(120, 255, 210, 0.8);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    body{
+      height:100vh;
+      overflow:hidden;
+      color:var(--text);
+      background:#06070b;
+    }
+
+    /* Aurora background */
+    .aurora{
+      position:fixed; inset:0; z-index:0; overflow:hidden;
+      background:
+        radial-gradient(1200px 800px at 20% 20%, rgba(30,255,200,0.20), transparent 60%),
+        radial-gradient(900px 600px at 80% 30%, rgba(80,150,255,0.22), transparent 60%),
+        radial-gradient(900px 700px at 50% 80%, rgba(255,80,180,0.10), transparent 65%),
+        linear-gradient(180deg, #05060a, #070b12);
+    }
+
+    .aurora::before,
+    .aurora::after{
+      content:"";
+      position:absolute;
+      width:140%;
+      height:140%;
+      left:-20%;
+      top:-20%;
+      background:
+        radial-gradient(circle at 30% 40%, rgba(20,255,210,0.28), transparent 55%),
+        radial-gradient(circle at 70% 30%, rgba(80,160,255,0.22), transparent 55%),
+        radial-gradient(circle at 40% 70%, rgba(255,120,220,0.10), transparent 65%);
+      filter: blur(40px);
+      animation: auroraMove 18s ease-in-out infinite alternate;
+      opacity:0.9;
+    }
+    .aurora::after{
+      animation-duration: 26s;
+      opacity:0.65;
+      filter: blur(60px);
+    }
+
+    @keyframes auroraMove{
+      0%   { transform: translate(-2%, -2%) rotate(0deg) scale(1); }
+      50%  { transform: translate(2%, 1%) rotate(4deg) scale(1.03); }
+      100% { transform: translate(-1%, 2%) rotate(-3deg) scale(1.05); }
+    }
+
+    /* Particle canvas */
+    canvas#particles{
+      position:fixed;
+      inset:0;
+      z-index:1;
+      opacity:0.55;
+      pointer-events:none;
+    }
+
+    /* UI container */
+    .app{
+      position:relative;
+      z-index:5;
+      height:100vh;
+      width:100%;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding: 70px 18px 30px;
+    }
+
+    .panel{
+      width:min(980px, 96vw);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 26px;
+      padding: 26px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 22px 90px rgba(0,0,0,0.55);
+      position:relative;
+      overflow:hidden;
+    }
+
+    .panel::before{
+      content:"";
+      position:absolute; inset:-2px;
+      border-radius:28px;
+      background: linear-gradient(120deg,
+        rgba(120,255,210,0.14),
+        rgba(120,150,255,0.10),
+        rgba(255,120,210,0.06)
+      );
+      filter: blur(18px);
+      z-index:-1;
+      animation: glow 6s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow{
+      from { opacity:0.55; transform: scale(1); }
+      to   { opacity:0.9; transform: scale(1.02); }
+    }
+
+    .top{
+      display:flex; justify-content:space-between; align-items:center;
+      gap:12px; margin-bottom:16px;
+    }
+    .brand h1{ font-size:22px; letter-spacing:0.4px; }
+    .brand p{ font-size:13px; color:var(--muted); margin-top:4px; }
+
+    .pill{
+      padding:8px 12px;
+      border-radius:999px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      font-size:12px;
+      color: rgba(255,255,255,0.86);
+      display:flex; gap:8px; align-items:center;
+      white-space:nowrap;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap:14px;
+    }
+    @media(max-width:850px){ .grid{ grid-template-columns:1fr; } }
+
+    .card{
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.22);
+      border-radius: 18px;
+      padding:16px;
+    }
+    .card h2{
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: rgba(255,255,255,0.90);
+    }
+
+    .row{
+      display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;
+    }
+    .input, .btn, select{
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.18);
+      outline:none;
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.92);
+      transition: 0.2s ease;
+      font-size: 14px;
+    }
+    .input{ flex:1; min-width:220px; }
+    select{ min-width:140px; }
+
+    .btn{ cursor:pointer; user-select:none; }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.12); }
+    .btn.primary{
+      background: rgba(120,255,210,0.14);
+      border: 1px solid rgba(120,255,210,0.25);
+      font-weight: 650;
+    }
+
+    .hint{ margin-top:8px; font-size:12px; color: rgba(255,255,255,0.58); }
+
+    .report{
+      min-height: 240px;
+      font-size: 14px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      color: rgba(255,255,255,0.88);
+    }
+    .status{ margin-top:8px; font-size:12px; color: rgba(255,255,255,0.70); }
+
+    .footer{
+      margin-top:12px;
+      font-size:12px;
+      color: rgba(255,255,255,0.55);
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="aurora"></div>
+  <canvas id="particles"></canvas>
+
+  <div class="app">
+    <div class="panel">
+      <div class="top">
+        <div class="brand">
+          <h1>⚕️ OmniHealth AI</h1>
+          <p>Clean medical vibe • dynamic aurora • calm particles</p>
+        </div>
+        <div class="pill">🧬 Health Engine <span style="opacity:.55;">•</span> Live UI</div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Input</h2>
+
+          <div class="row">
+            <input class="input" placeholder="Type medicine / symptom name..." id="manual"/>
+            <select id="language">
+              <option>English</option>
+              <option>Hindi</option>
+              <option>Spanish</option>
+              <option>French</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <button class="btn primary" id="analyzeBtn">Run Advanced Analysis 🔍</button>
+            <button class="btn" id="clearBtn">Clear</button>
+          </div>
+
+          <div class="hint">UI demo. You can connect to Streamlit/Gemini backend later.</div>
+        </div>
+
+        <div class="card">
+          <h2>Personalized Report</h2>
+          <div class="report" id="report">Ready for analysis ✅</div>
+          <div class="status" id="status">Idle</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        DISCLAIMER: Educational tool only. Consult a doctor for real medical advice.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ------------------------------
+    // PARTICLES (Calm floating dots)
+    // ------------------------------
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    let W, H, dots = [];
+
+    function resize(){
+      W = canvas.width = window.innerWidth * devicePixelRatio;
+      H = canvas.height = window.innerHeight * devicePixelRatio;
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+      initDots();
+    }
+    window.addEventListener("resize", resize);
+
+    function rand(min,max){ return Math.random()*(max-min)+min; }
+
+    function initDots(){
+      dots = [];
+      const count = Math.floor((window.innerWidth * window.innerHeight)/12000);
+      for(let i=0;i<count;i++){
+        dots.push({
+          x: rand(0,W),
+          y: rand(0,H),
+          r: rand(0.7, 2.2) * devicePixelRatio,
+          a: rand(0.06, 0.24),
+          vx: rand(-0.08, 0.08) * devicePixelRatio,
+          vy: rand(-0.12, 0.05) * devicePixelRatio,
+        });
+      }
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+
+      for(const d of dots){
+        d.x += d.vx;
+        d.y += d.vy;
+
+        if(d.x < -20) d.x = W+20;
+        if(d.x > W+20) d.x = -20;
+        if(d.y < -20) d.y = H+20;
+        if(d.y > H+20) d.y = -20;
+
+        ctx.globalAlpha = d.a;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI*2);
+        ctx.fillStyle = "white";
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(draw);
+    }
+
+    resize();
+    draw();
+
+    // ------------------------------
+    // DEMO UI actions
+    // ------------------------------
+    const report = document.getElementById("report");
+    const status = document.getElementById("status");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    analyzeBtn.addEventListener("click", ()=>{
+      status.textContent = "Consulting Medical Engine... ⏳";
+      report.textContent = "Generating report...\n\n(Connect this UI to Streamlit/Gemini next)";
+      setTimeout(()=>{
+        status.textContent = "Report generated ✅";
+        report.textContent =
+`CONFIDENCE SCORE: 90%
+
+INFO:
+- Category: Medical guidance UI demo
+
+PERSONALIZED ADVICE:
+- Clean professional background + calm motion.
+
+FIRST AID:
+Do: Hydrate, rest, monitor symptoms.
+Don't: Overmedicate, ignore severe symptoms.
+
+SOURCE:
+Search: "WHO symptom guidance"
+
+SAFETY:
+This output is demo only.`;
+      }, 900);
+    });
+
+    clearBtn.addEventListener("click", ()=>{
+      status.textContent = "Cleared 🗑️";
+      report.textContent = "Ready for analysis ✅";
+    });
+  </script>
+</body>
+</html>
+fl
