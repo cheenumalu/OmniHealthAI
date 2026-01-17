@@ -113,13 +113,19 @@ with c1:
 
 with c2:
     st.subheader("Clinical Report")
-    if 'report' in st.session_state:
-        # Triage Red Alert Logic
-        if any(w in st.session_state.report.lower() for w in ["emergency", "urgent", "doctor immediately"]):
+    
+    # Check if the report exists and is NOT None
+    if 'report' in st.session_state and st.session_state.report is not None:
+        
+        # 🚨 Safety Check: Only run .lower() if report is a valid string
+        report_text = str(st.session_state.report).lower()
+        
+        if any(w in report_text for w in ["emergency", "urgent", "doctor immediately"]):
             st.error("🚨 URGENT: CONSULT A DOCTOR")
+            
         st.write(st.session_state.report)
     else:
-        st.info("Awaiting medical input...")
+        st.info("Awaiting medical data... Please click 'Analyze Now'.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
