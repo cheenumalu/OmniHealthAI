@@ -6,68 +6,54 @@ import PIL.Image
 try:
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 except Exception as e:
-    st.error("API Key missing in Secrets!")
+    st.error("API Key missing in Streamlit Secrets!")
 
 # 2. Page Configuration
 st.set_page_config(page_title="OmniHealth AI", layout="wide", page_icon="⚕️")
 
-# ⚡ NUCLEAR RESET: Clears all ghost data/cache without touching the UI
+# ⚡ NUCLEAR RESET (Sidebar) - Clears "Standby" loop
 with st.sidebar:
-    st.title("Admin Tools")
+    st.title("Admin Panel")
     if st.button("🚨 NUCLEAR RESET CACHE"):
         st.cache_resource.clear()
         st.session_state.clear()
         st.rerun()
-    st.info("Use this if the engine stays in 'Standby' mode.")
+    st.info("Use this if the app is stuck or you changed the API key.")
 
-# 3. iOS Glassmorphism UI + Cursor Glow
+# 3. iOS Glassmorphism UI Styling
 st.markdown("""
     <style>
-    header {visibility: hidden;}
+    /* Clean Header/Footer */
+    [data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; color: white !important; }
+    .stDeployButton { display: none; }
     footer {visibility: hidden;}
-    .block-container {padding-top: 2rem !important;} 
+    
+    /* 🌌 Background & Glass Panel */
     .stApp { background: linear-gradient(135deg, #0f172a 0%, #020617 100%); }
-
     .glass-card {
         background: rgba(255, 255, 255, 0.03);
         backdrop-filter: blur(45px) saturate(160%);
-        -webkit-backdrop-filter: blur(45px) saturate(160%);
         border-radius: 35px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         padding: 40px;
         box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.7);
         margin: 10px auto;
         color: white;
     }
-
-    #cursor-glow {
-        position: fixed; width: 600px; height: 600px;
-        background: radial-gradient(circle, rgba(56, 189, 248, 0.1) 0%, transparent 70%);
-        border-radius: 50%; pointer-events: none;
-        transform: translate(-50%, -50%); z-index: 1;
-    }
     
+    /* 🔘 iOS Style Buttons */
     .stButton>button {
         width: 100% !important;
         background: rgba(255, 255, 255, 0.08) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         color: white !important;
         border-radius: 12px !important;
+        font-weight: 600 !important;
     }
     </style>
-    <div id="cursor-glow"></div>
-    <script>
-    const glow = document.getElementById('cursor-glow');
-    document.addEventListener('mousemove', (e) => {
-        window.requestAnimationFrame(() => {
-            glow.style.left = e.clientX + 'px';
-            glow.style.top = e.clientY + 'px';
-        });
-    });
-    </script>
     """, unsafe_allow_html=True)
 
-# 4. Main Glass Dashboard
+# 4. Main UI Dashboard
 st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
 # Header
@@ -80,7 +66,7 @@ with h2:
 
 st.divider()
 
-#  Step 1: Patient Profile Row
+#  Step 1: Patient Profile Manager
 st.subheader("👤 Patient Profile")
 p1, p2, p3, p4 = st.columns(4)
 with p1:
@@ -95,12 +81,12 @@ with p4:
 
 st.divider()
 
-#  Step 2: Input & Analysis
+#  Step 2: Analysis Area
 c1, c2 = st.columns(2)
 
 with c1:
     st.subheader("Input")
-    query = st.text_input("Symptom/Medicine", placeholder="What are you checking?")
+    query = st.text_input("Symptom or Medicine", placeholder="What are we checking?")
     uploaded_file = st.file_uploader("Scan Image", type=["jpg", "png"])
     
     b1, b2, _ = st.columns([2, 1, 1])
@@ -113,27 +99,26 @@ with c1:
 
 with c2:
     st.subheader("Clinical Report")
-    
-    # Check if the report exists and is NOT None
-    if 'report' in st.session_state and st.session_state.report is not None:
+    # SAFE DISPLAY LOGIC: Fixes the 'NoneType' attribute error
+    if 'report' in st.session_state and st.session_state.report:
+        report_text = str(st.session_state.report)
         
-        # 🚨 Safety Check: Only run .lower() if report is a valid string
-        report_text = str(st.session_state.report).lower()
+        # 🚨 Triage Safety Check
+        if any(w in report_text.lower() for w in ["emergency", "urgent", "doctor immediately"]):
+            st.error("🚨 URGENT: CONSULT A DOCTOR IMMEDIATELY")
         
-        if any(w in report_text for w in ["emergency", "urgent", "doctor immediately"]):
-            st.error("🚨 URGENT: CONSULT A DOCTOR")
-            
         st.write(st.session_state.report)
     else:
-        st.info("Awaiting medical data... Please click 'Analyze Now'.")
+        st.info("Awaiting medical input... Use the 'Analyze' button to start.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# 5. Engine Logic
+# 5. Analysis Engine
 if run:
-    with st.spinner("🧬 Consulting AI Engine..."):
+    with st.spinner("🧬 Processing Neural Request..."):
         try:
-            prompt = (f"Act as a professional medical triage assistant. Analyze for a {age}y/o {gender} "
+            # Build the personalized prompt
+            prompt = (f"Act as a professional medical assistant. Analyze for a {age}y/o {gender} "
                       f"with context '{context}' and allergies '{allergies}'. Input: {query}.")
             
             if uploaded_file:
@@ -142,9 +127,13 @@ if run:
             else:
                 response = client.models.generate_content(model="gemini-2.0-flash-lite", contents=[prompt])
             
+            # Store result in session state
             st.session_state.report = response.text
             st.rerun()
+            
         except Exception as e:
             st.error(f"Engine Error: {str(e)}")
+            if "429" in str(e):
+                st.warning("⚠️ Quota Exhausted. Ensure you are using a fresh API key in Secrets.")
 
-st.caption("DISCLAIMER: Educational tool for OmniHealth AI project. Always consult a physician.")
+st.caption("DISCLAIMER: This is a hackathon MVP. Not for actual medical diagnosis.")
