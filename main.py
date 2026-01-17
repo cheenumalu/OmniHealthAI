@@ -1,28 +1,25 @@
 import streamlit as st
-from google import genai
+from openai import OpenAI
 import PIL.Image
+import base64
+import io
 
-# 1. Initialize Client with Safety Logic
+# 1. Initialize OpenAI Client
 try:
-    # .strip() removes any accidental spaces from your Streamlit Secrets dashboard
-    api_key = st.secrets["GEMINI_API_KEY"].strip()
-    client = genai.Client(api_key=api_key)
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"].strip())
 except Exception as e:
-    st.error("🔑 API Key Missing or Invalid in Streamlit Secrets!")
+    st.error("🔑 OpenAI API Key Missing in Streamlit Secrets!")
 
-# 2. Page Config
 st.set_page_config(page_title="OmniHealth AI", layout="wide", page_icon="⚕️")
 
-# ⚡ NUCLEAR RESET: Clears stuck cache and ghost data
+# ⚡ NUCLEAR RESET (Sidebar)
 with st.sidebar:
-    st.title("Admin Tools")
+    st.title("Admin Panel")
     if st.button("🚨 NUCLEAR RESET CACHE"):
-        st.cache_resource.clear()
         st.session_state.clear()
         st.rerun()
-    st.info("Click this if you get a 'Resource Exhausted' or 'Engine Standby' message.")
 
-# 3. iOS Glassmorphism UI
+# 2. iOS Glassmorphism UI
 st.markdown("""
     <style>
     [data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
@@ -37,10 +34,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 4. Main UI Dashboard
+# 3. UI Dashboard
 st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 st.title("⚕️ OmniHealth AI")
-st.caption("Context-Aware Triage • Apple Glass Design")
+st.caption("ChatGPT-Powered Triage • Apple Glass Design")
 
 st.divider()
 
@@ -60,8 +57,8 @@ st.divider()
 c1, c2 = st.columns(2)
 with c1:
     st.subheader("Input")
-    query = st.text_input("Query", placeholder="Symptoms or medication...")
-    uploaded = st.file_uploader("Scan Image", type=["jpg", "png", "jpeg"])
+    query = st.text_input("Symptom or Medication", placeholder="What are we checking?")
+    uploaded = st.file_uploader("Scan Medicine/Prescription", type=["jpg", "png", "jpeg"])
     
     col_b1, col_b2, _ = st.columns([2, 1, 1])
     with col_b1:
@@ -73,36 +70,45 @@ with c1:
 
 with c2:
     st.subheader("Clinical Report")
-    # ✅ FIX: Safely check if report exists before processing
     if 'report' in st.session_state and st.session_state.report:
         report_text = str(st.session_state.report)
-        
-        # Emergency Red Alert
         if any(w in report_text.lower() for w in ["emergency", "urgent", "doctor immediately"]):
             st.error("🚨 URGENT: CONSULT A DOCTOR IMMEDIATELY")
-            
         st.write(st.session_state.report)
     else:
         st.info("Ready. Please provide input and click Analyze.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# 5. Execution Logic
+# 4. Helper: Convert Image to Base64 for OpenAI
+def encode_image(uploaded_file):
+    return base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
+
+# 5. Execution Logic (OpenAI Integration)
 if run:
-    with st.spinner("🧬 Neural Engine Processing..."):
+    with st.spinner("🧬 ChatGPT Neural Engine Processing..."):
         try:
-            prompt = (f"Act as a medical assistant. Analyze for a {age}y/o {gender} "
+            prompt = (f"Act as a professional medical assistant. Analyze for a {age}y/o {gender} "
                       f"with context '{context}' and allergies '{allergies}'. Input: {query}.")
             
-            if uploaded:
-                img = PIL.Image.open(uploaded)
-                res = client.models.generate_content(model="gemini-2.0-flash-lite", contents=[img, prompt])
-            else:
-                res = client.models.generate_content(model="gemini-2.0-flash-lite", contents=[prompt])
+            messages = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
             
-            st.session_state.report = res.text
+            if uploaded:
+                base64_image = encode_image(uploaded)
+                messages[0]["content"].append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                })
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini", # High speed, low cost for hackathons
+                messages=messages,
+                max_tokens=500
+            )
+            
+            st.session_state.report = response.choices[0].message.content
             st.rerun()
         except Exception as e:
             st.error(f"Engine Error: {str(e)}")
 
-st.caption("DISCLAIMER: Hackathon MVP. Not for clinical diagnosis.")
+st.caption("DISCLAIMER: Hackathon MVP using OpenAI API. Not for clinical diagnosis.")
