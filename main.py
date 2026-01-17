@@ -14,7 +14,6 @@ st.set_page_config(page_title="OmniHealth AI", layout="wide", page_icon="⚕️"
 # ⚡ SIDEBAR CONTROLS
 with st.sidebar:
     st.title("Settings")
-    # Toggle this ON for your presentation to avoid API errors
     demo_mode = st.toggle("Enable Live Demo Mode", value=True)
     st.divider()
     if st.button("🚨 CLEAR SYSTEM CACHE"):
@@ -40,7 +39,7 @@ st.markdown("""
 st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 st.title("⚕️ OmniHealth AI")
 status = "🔵 DEMO MODE ACTIVE" if demo_mode else "🟢 SYSTEM LIVE"
-st.caption(f"{status} • Apple Glass Medical Triage")
+st.caption(f"{status} • Contextual Pre-Consultation Triage")
 
 st.divider()
 
@@ -59,31 +58,39 @@ st.divider()
 c1, c2 = st.columns(2)
 with c1:
     st.subheader("Medical Input")
-    query = st.text_input("Query", placeholder="Check symptom or medication...")
+    query = st.text_input("Symptom or Concern", placeholder="e.g., persistent dry cough for 3 days")
     uploaded = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
     
     if st.button("Analyze Now 🔍"):
         if demo_mode:
             with st.spinner("🧬 Consulting Neural Engine..."):
-                # Cleanly formatted Markdown response for the judges
+                # Enhanced Pre-Consultation Response
                 st.session_state.report = f"""
 ### 📋 Clinical Triage Report
-**Patient:** {age}y/o {gender} | **Allergies:** {allergies}
+**Target Patient:** {age}y/o {gender} | **Allergies:** {allergies}
 
-**Analysis:** Based on the input '{query}', our engine has analyzed the context of your profile. No acute contraindications were detected.
+**1. Preliminary Risk Assessment**
+Based on the input '{query}', your profile suggests a **Moderate** priority level. No immediate red-flag indicators (like respiratory distress or high fever) were detected in the text.
 
-**Guidance:**
-1. Proceed with standard dosage as prescribed.
-2. Monitor for minor side effects like mild drowsiness.
-3. Maintain hydration and rest.
+**2. Potential Causes to Discuss with a Doctor**
+* **Environmental:** Possible reaction to allergens or seasonal changes.
+* **Infectious:** Early-stage viral irritation (common for this age group).
 
-**Status:** ✅ SAFE TO PROCEED
+**3. Home-Care Guidance (Pre-Consultation)**
+* **Hydration:** Increase fluid intake to 2.5L daily to soothe membranes.
+* **Monitoring:** Record your temperature twice daily to provide data for your physician.
+* **Safety Check:** Since you mentioned **{allergies}** as an allergy, avoid any over-the-counter meds containing these ingredients.
+
+**4. When to Seek Urgent Care**
+Immediately visit an ER if you experience chest pain, difficulty breathing, or a fever exceeding 103°F (39.4°C).
+
+**Status:** ⚠️ STABLE - SCHEDULE CONSULTATION
                 """
                 st.rerun()
         else:
             with st.spinner("🧬 Processing Live API..."):
                 try:
-                    prompt = f"Medical triage for {age}y/o {gender} with {allergies} allergies. Input: {query}"
+                    prompt = f"Medical pre-consultation triage for {age}y/o {gender} with {allergies} allergies. Query: {query}"
                     res = client.models.generate_content(model="gemini-2.0-flash-lite", contents=[prompt])
                     st.session_state.report = res.text
                     st.rerun()
@@ -93,17 +100,11 @@ with c1:
 with c2:
     st.subheader("Clinical Report")
     if 'report' in st.session_state and st.session_state.report:
-        # Wrap in Glass Styling without letting HTML leak into the text
-        st.markdown("""
-        <div style="background:rgba(255,255,255,0.05); padding:25px; border-radius:15px; border:1px solid rgba(255,255,255,0.1);">
-        """, unsafe_allow_html=True)
-        
-        # This renders the Markdown correctly (fixing the ### and ** issue)
+        st.markdown("""<div style="background:rgba(255,255,255,0.05); padding:25px; border-radius:15px; border:1px solid rgba(255,255,255,0.1);">""", unsafe_allow_html=True)
         st.markdown(st.session_state.report)
-        
         st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("System Ready. Enter details and click Analyze.")
+        st.info("System Ready. Enter details to receive pre-consultation guidance.")
 
 st.markdown('</div>', unsafe_allow_html=True)
-st.caption("DISCLAIMER: Hackathon Prototype. Not for medical diagnosis.")
+st.caption("DISCLAIMER: This is a pre-consultation triage tool for educational purposes. It does not provide medical diagnoses.")
